@@ -98,31 +98,31 @@ def save_json(path: Path, data: dict):
 
 
 # =========================
-# Templates / data files
+# Templates / files
 # =========================
 def build_catalog_template():
     return pd.DataFrame([
         {
             "Артикул, SKU": "SKU-001",
-            "Название товара": "Беговая дорожка складная домашняя",
-            "Длина, см": 50,
-            "Ширина, см": 15,
-            "Высота, см": 25,
-            "Вес, кг": 15,
-            "Себестоимость, ₽": 12000,
-            "Цена без акции, ₽": 18990,
-            "Цена акции, ₽": 16990,
+            "Название товара": "Дрель ударная электрическая 650 Вт",
+            "Длина, см": 32,
+            "Ширина, см": 8,
+            "Высота, см": 26,
+            "Вес, кг": 2.2,
+            "Себестоимость, ₽": 2800,
+            "Цена без акции, ₽": 4990,
+            "Цена акции, ₽": 4290,
         },
         {
             "Артикул, SKU": "SKU-002",
-            "Название товара": "Футболка хлопковая мужская",
-            "Длина, см": 30,
+            "Название товара": "Велосипед горный взрослый 27.5",
+            "Длина, см": 140,
             "Ширина, см": 25,
-            "Высота, см": 3,
-            "Вес, кг": 0.2,
-            "Себестоимость, ₽": 450,
-            "Цена без акции, ₽": 1490,
-            "Цена акции, ₽": 1190,
+            "Высота, см": 80,
+            "Вес, кг": 15.5,
+            "Себестоимость, ₽": 18500,
+            "Цена без акции, ₽": 32990,
+            "Цена акции, ₽": 28990,
         }
     ])
 
@@ -130,19 +130,21 @@ def build_catalog_template():
 def build_template_notes():
     return pd.DataFrame([
         {"Поле": "Артикул, SKU", "Описание": "Артикул продавца. По нему система пытается найти товар в Ozon.", "Пример": "SKU-001"},
-        {"Поле": "Название товара", "Описание": "Название товара. Используется как резерв для определения категории, если Ozon API не вернул категорию.", "Пример": "Беговая дорожка складная домашняя"},
-        {"Поле": "Длина, см", "Описание": "Длина товара в сантиметрах.", "Пример": "50"},
-        {"Поле": "Ширина, см", "Описание": "Ширина товара в сантиметрах.", "Пример": "15"},
-        {"Поле": "Высота, см", "Описание": "Высота товара в сантиметрах.", "Пример": "25"},
-        {"Поле": "Вес, кг", "Описание": "Вес товара в килограммах.", "Пример": "15"},
-        {"Поле": "Себестоимость, ₽", "Описание": "Полная себестоимость одной единицы товара.", "Пример": "12000"},
-        {"Поле": "Цена без акции, ₽", "Описание": "Обычная цена товара без акции.", "Пример": "18990"},
-        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи в акции. Если пусто, система рассчитает её из цены без акции.", "Пример": "16990"},
+        {"Поле": "Название товара", "Описание": "Название товара. Используется как резерв для определения категории, если Ozon API не вернул категорию.", "Пример": "Дрель ударная электрическая 650 Вт"},
+        {"Поле": "Длина, см", "Описание": "Длина товара в сантиметрах.", "Пример": "32"},
+        {"Поле": "Ширина, см", "Описание": "Ширина товара в сантиметрах.", "Пример": "8"},
+        {"Поле": "Высота, см", "Описание": "Высота товара в сантиметрах.", "Пример": "26"},
+        {"Поле": "Вес, кг", "Описание": "Вес товара в килограммах.", "Пример": "2.2"},
+        {"Поле": "Себестоимость, ₽", "Описание": "Полная себестоимость одной единицы товара.", "Пример": "2800"},
+        {"Поле": "Цена без акции, ₽", "Описание": "Обычная цена товара без акции.", "Пример": "4990"},
+        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи в акции. Если пусто, система рассчитает её из цены без акции.", "Пример": "4290"},
     ])
 
 
 def build_default_commissions_df():
     return pd.DataFrame([
+        {"category_id": 0, "Категория Ozon": "Электроинструменты", "Комиссия, %": 15},
+        {"category_id": 0, "Категория Ozon": "Спорт и отдых", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Смартфоны", "Комиссия, %": 10},
         {"category_id": 0, "Категория Ozon": "Электроника", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Компьютеры и комплектующие", "Комиссия, %": 12},
@@ -150,7 +152,6 @@ def build_default_commissions_df():
         {"category_id": 0, "Категория Ozon": "Красота и здоровье", "Комиссия, %": 12},
         {"category_id": 0, "Категория Ozon": "Дом и сад", "Комиссия, %": 16},
         {"category_id": 0, "Категория Ozon": "Детские товары", "Комиссия, %": 18},
-        {"category_id": 0, "Категория Ozon": "Спорт и отдых", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Автотовары", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Канцтовары", "Комиссия, %": 17},
         {"category_id": 0, "Категория Ozon": "Прочее", "Комиссия, %": 20},
@@ -292,14 +293,21 @@ def fetch_ozon_products_by_offer_ids(offer_ids):
 # Category fallback
 # =========================
 CATEGORY_KEYWORDS = {
+    "Электроинструменты": [
+        "дрель", "перфоратор", "шуруповерт", "шуруповёрт", "болгарка", "лобзик",
+        "шлифмашина", "гайковерт", "гайковёрт", "электроинструмент", "отвертка", "отвёртка"
+    ],
+    "Спорт и отдых": [
+        "велосипед", "горный велосипед", "bmx", "самокат", "тренажер", "тренажёр",
+        "беговая дорожка", "эллипс", "гантел", "коврик", "фитнес", "рюкзак"
+    ],
     "Смартфоны": ["смартфон", "iphone", "xiaomi", "redmi", "realme", "galaxy"],
     "Электроника": ["наушник", "гарнитур", "колонка", "power bank", "пауэрбанк", "кабель", "зарядк", "bluetooth"],
     "Компьютеры и комплектующие": ["ноутбук", "монитор", "ssd", "hdd", "клавиатур", "мышь", "видеокарта", "процессор"],
     "Одежда и обувь": ["футболка", "худи", "джинсы", "куртка", "кроссовки", "ботинки", "рубашка"],
     "Красота и здоровье": ["крем", "шампунь", "сыворотка", "маска", "парфюм", "духи"],
-    "Дом и сад": ["контейнер", "посуда", "сковород", "подушка", "одеяло", "лампа", "дорожка", "стеллаж"],
+    "Дом и сад": ["контейнер", "посуда", "сковород", "подушка", "одеяло", "лампа", "стеллаж"],
     "Детские товары": ["детск", "игрушк", "коляска", "подгуз", "конструктор"],
-    "Спорт и отдых": ["гантел", "коврик", "фитнес", "палатка", "рюкзак", "беговая дорожка", "тренажер"],
     "Автотовары": ["авто", "машин", "держатель", "щетка", "чехол на руль"],
     "Канцтовары": ["тетрад", "ручка", "карандаш", "маркер", "ежедневник"],
 }
@@ -666,12 +674,7 @@ logistics_params = load_json(LOGISTICS_CONFIG_PATH, {})
 st.title("Ozon — Юнит-экономика")
 st.caption("Загрузите один Excel-шаблон, система сама определит категорию, подберёт комиссию и посчитает юнит-экономику")
 
-
-# =========================
-# Main UI
-# =========================
 st.markdown("## 1. Загрузите файл")
-
 st.download_button(
     "Скачать шаблон (Excel)",
     data=to_excel_bytes({
@@ -731,21 +734,6 @@ with col_p11:
 st.markdown("## 3. Расчёт")
 calculate = st.button("🚀 Рассчитать", type="primary", use_container_width=True)
 
-with st.expander("Настройки администратора"):
-    st.markdown("### Справочник комиссий")
-    st.write("Файл: `data/ozon_commissions.xlsx`")
-    st.dataframe(commissions_df, use_container_width=True)
-
-    st.markdown("### Логистический конфиг")
-    st.json(logistics_params)
-
-    st.markdown("### Ключи Ozon")
-    if has_ozon_credentials():
-        st.success("Ключи Ozon найдены в secrets.")
-    else:
-        st.warning("Ключи Ozon не найдены в secrets. Будет использоваться только резервное определение категории.")
-
-
 catalog_df = pd.DataFrame()
 
 if uploaded_catalog is not None:
@@ -758,10 +746,6 @@ if uploaded_catalog is not None:
     except Exception as e:
         st.error(f"Не удалось прочитать Excel: {e}")
 
-
-# =========================
-# Calculation
-# =========================
 if calculate:
     if uploaded_catalog is None or catalog_df.empty:
         st.error("Сначала загрузите Excel-файл с товарами.")
@@ -769,7 +753,6 @@ if calculate:
         conn.execute("DELETE FROM products")
         conn.commit()
 
-        inserted = 0
         for _, row in catalog_df.iterrows():
             sku = str(row.get("Артикул, SKU", row.get("SKU", row.get("Артикул", "")))).strip()
             name = str(row.get("Название товара", row.get("Название", row.get("Наименование", "")))).strip()
@@ -791,7 +774,6 @@ if calculate:
                 (sku, name, length_cm, width_cm, height_cm, weight_kg, cost, price_regular, price_promo)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (sku, name, length_cm, width_cm, height_cm, weight_kg, cost, price_regular, price_promo))
-            inserted += 1
 
         conn.commit()
         all_products = pd.read_sql("SELECT * FROM products ORDER BY id DESC", conn)
@@ -853,12 +835,12 @@ if calculate:
 
                 if api_category_id or str(api_category_name).strip():
                     resolved_category_name = api_category_name if str(api_category_name).strip() else "По category_id"
-                    category_source = ozon_info.get("source", "Ozon API")
+                    category_source = "Ozon API"
                 else:
                     resolved_category_name, category_source = fallback_category(name, commissions_df)
                     api_category_name = resolved_category_name
 
-                commission_percent, commission_source = get_commission_from_lookup(
+                commission_percent, _ = get_commission_from_lookup(
                     price_for_commission=price_promo * (1 - spp_discount_pct),
                     category_id=api_category_id,
                     category_name=api_category_name,
@@ -920,53 +902,19 @@ if calculate:
                     "Хранение, ₽": current_metrics["storage_rub"],
                     "Возвраты / отмены, ₽": current_metrics["returns_total_rub"],
                     "Полная себестоимость от текущей цены, ₽": current_metrics["full_cost_before_tax"],
-                    "Цена без акции, ₽": current_metrics["regular_price_rub"],
                     "Цена акции, ₽": current_metrics["promo_price_rub"],
-                    "Выручка продавца после СПП, ₽": current_metrics["seller_revenue_price_rub"],
                     "Прибыль от текущей цены, ₽": current_metrics["profit_after_tax_rub"],
                     "Маржинальность от текущей цены, %": current_metrics["margin_pct"],
-                    "Рекомендованная цена без акции, ₽": safe_round(recommended_regular_price, 2),
                     "Рекомендованная цена акции, ₽": safe_round(recommended_promo_price, 2),
                     "Прибыль от рекомендованной цены, ₽": recommended_metrics["profit_after_tax_rub"],
                     "Маржинальность от рекомендованной цены, %": recommended_metrics["margin_pct"],
-                    "Наценка к себестоимости от рекомендованной цены, %": recommended_metrics["markup_to_cost_pct"],
                     "Статус SKU": status,
 
-                    "Ozon product_id": ozon_info.get("product_id"),
-                    "Ozon sku": ozon_info.get("sku_ozon"),
-                    "category_id": api_category_id,
-                    "Источник комиссии": commission_source,
-                    "Длина, см": safe_round(length_cm, 2),
-                    "Ширина, см": safe_round(width_cm, 2),
-                    "Высота, см": safe_round(height_cm, 2),
-                    "Вес, кг": safe_round(weight_kg, 3),
-                    "Объём, л": safe_round(volume_liters, 3),
                     "Себестоимость, ₽": safe_round(cost, 2),
-                    "СПП, %": safe_round(spp_discount, 2),
-                    "Цена покупателя, ₽": current_metrics["customer_price_rub"],
-                    "Скидка маркетплейса, ₽": current_metrics["marketplace_discount_rub"],
-                    "Комиссия, ₽": current_metrics["commission_rub"],
-                    "в т.ч. обработка, ₽": current_metrics["processing_rub"],
-                    "в т.ч. доставка, ₽": current_metrics["delivery_rub"],
-                    "Отмены, %": current_metrics["cancellation_share_pct"],
-                    "Эффективная выкупаемость, %": current_metrics["effective_buyout_share_pct"],
-                    "Невыкупы после доставки, %": current_metrics["non_buyout_after_dispatch_share_pct"],
-                    "Обратная логистика возвратов, ₽": current_metrics["return_logistics_rub"],
-                    "Логистика отмен, ₽": current_metrics["cancellation_logistics_rub"],
-                    "Обработка возвратов / отмен, ₽": current_metrics["return_processing_rub"],
-                    "Потеря товарного вида на возвратах, ₽": current_metrics["damage_reserve_on_returns_rub"],
-                    "Эквайринг, %": safe_round(acquiring, 2),
-                    "Эквайринг, ₽": current_metrics["acquiring_rub"],
-                    "Реклама, %": safe_round(ad, 2),
-                    "Реклама, ₽": current_metrics["advertising_rub"],
-                    "Буст, %": safe_round(boost, 2),
-                    "Буст, ₽": current_metrics["boost_rub"],
-                    "Базовый резерв на брак, ₽": current_metrics["base_defect_reserve_rub"],
-                    "Налог от текущей цены, ₽": current_metrics["tax_rub"],
-                    "Прибыль от текущей цены, % от цены": current_metrics["profit_pct_of_revenue"],
-                    "Полная себестоимость от рекомендованной цены, ₽": recommended_metrics["full_cost_before_tax"],
-                    "Налог от рекомендованной цены, ₽": recommended_metrics["tax_rub"],
-                    "Прибыль от рекомендованной цены, % от цены": recommended_metrics["profit_pct_of_revenue"],
+                    "Цена без акции, ₽": current_metrics["regular_price_rub"],
+                    "Выручка продавца после СПП, ₽": current_metrics["seller_revenue_price_rub"],
+                    "Рекомендованная цена без акции, ₽": safe_round(recommended_regular_price, 2),
+                    "Наценка к себестоимости от рекомендованной цены, %": recommended_metrics["markup_to_cost_pct"],
                 })
 
         res_df = pd.DataFrame(results)
@@ -992,6 +940,7 @@ if calculate:
             "Артикул, SKU",
             "Название товара",
             "Категория Ozon",
+            "Источник категории",
             "Комиссия, %",
             "Логистика, ₽",
             "Хранение, ₽",
@@ -1008,51 +957,7 @@ if calculate:
         shown_df = res_df[visible_cols].copy()
         st.dataframe(shown_df.style.apply(highlight_status, axis=1), use_container_width=True)
 
-        with st.expander("Показать детализацию расчёта"):
-            detail_cols = [
-                "Артикул, SKU",
-                "Название товара",
-                "Источник категории",
-                "Источник комиссии",
-                "Себестоимость, ₽",
-                "Цена без акции, ₽",
-                "Цена акции, ₽",
-                "СПП, %",
-                "Цена покупателя, ₽",
-                "Выручка продавца после СПП, ₽",
-                "Скидка маркетплейса, ₽",
-                "Комиссия, ₽",
-                "в т.ч. обработка, ₽",
-                "в т.ч. доставка, ₽",
-                "Хранение, ₽",
-                "Отмены, %",
-                "Эффективная выкупаемость, %",
-                "Невыкупы после доставки, %",
-                "Обратная логистика возвратов, ₽",
-                "Логистика отмен, ₽",
-                "Обработка возвратов / отмен, ₽",
-                "Потеря товарного вида на возвратах, ₽",
-                "Эквайринг, ₽",
-                "Реклама, ₽",
-                "Буст, ₽",
-                "Базовый резерв на брак, ₽",
-                "Налог от текущей цены, ₽",
-                "Полная себестоимость от текущей цены, ₽",
-                "Прибыль от текущей цены, ₽",
-                "Маржинальность от текущей цены, %",
-                "Рекомендованная цена без акции, ₽",
-                "Рекомендованная цена акции, ₽",
-                "Налог от рекомендованной цены, ₽",
-                "Полная себестоимость от рекомендованной цены, ₽",
-                "Прибыль от рекомендованной цены, ₽",
-                "Маржинальность от рекомендованной цены, %",
-                "Наценка к себестоимости от рекомендованной цены, %",
-            ]
-            st.dataframe(res_df[detail_cols], use_container_width=True)
-
         st.markdown("## 6. Выгрузка")
-        result_short = shown_df.copy()
-        result_full = res_df.copy()
         result_meta = pd.DataFrame([
             {"Параметр": "Модель работы", "Значение": model},
             {"Параметр": "Налогообложение", "Значение": tax_regime},
@@ -1070,7 +975,7 @@ if calculate:
 
         st.download_button(
             "Скачать краткий результат (Excel)",
-            data=to_excel_bytes({"Результат": result_short, "Параметры": result_meta}),
+            data=to_excel_bytes({"Результат": shown_df, "Параметры": result_meta}),
             file_name="ozon_краткий_результат.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
@@ -1078,9 +983,8 @@ if calculate:
         st.download_button(
             "Скачать полный результат (Excel)",
             data=to_excel_bytes({
-                "Результат полный": result_full,
+                "Результат полный": res_df,
                 "Параметры": result_meta,
-                "Справочник комиссий": commissions_df,
                 "Инструкция": build_template_notes()
             }),
             file_name="ozon_полный_результат.xlsx",
@@ -1088,4 +992,4 @@ if calculate:
         )
 
         if api_error:
-            st.warning(f"Ozon API отработал не полностью: {api_error}")
+            st.warning(f"Ozon API не вернул данные по части товаров. Для них была использована резервная логика по названию: {api_error}")
