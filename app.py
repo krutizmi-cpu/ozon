@@ -14,14 +14,10 @@ st.set_page_config(
     page_icon="📦"
 )
 
-# =========================
-# Paths / constants
-# =========================
 DB_PATH = "products_storage.db"
 DATA_DIR = Path("data")
 COMMISSIONS_PATH = DATA_DIR / "ozon_commissions.xlsx"
 LOGISTICS_CONFIG_PATH = DATA_DIR / "ozon_logistics_config.json"
-
 OZON_API_BASE = "https://api-seller.ozon.ru"
 
 
@@ -31,7 +27,6 @@ OZON_API_BASE = "https://api-seller.ozon.ru"
 def init_db():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     c = conn.cursor()
-
     c.execute("""
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +41,6 @@ def init_db():
             price_promo REAL DEFAULT 0
         )
     """)
-
     conn.commit()
     return conn
 
@@ -66,20 +60,6 @@ def clean_num(raw, default=0.0):
         return float(str(raw).replace(" ", "").replace(",", ".").strip())
     except Exception:
         return default
-
-
-def normalize_dimension(raw, unit):
-    value = clean_num(raw, 0.0)
-    if str(unit).strip().lower() in ("мм", "mm"):
-        return value / 10.0
-    return value
-
-
-def normalize_weight(raw, unit):
-    value = clean_num(raw, 0.0)
-    if str(unit).strip().lower() in ("г", "гр", "g", "gr"):
-        return value / 1000.0
-    return value
 
 
 def safe_round(value, ndigits=2):
@@ -118,7 +98,7 @@ def save_json(path: Path, data: dict):
 
 
 # =========================
-# Templates / default files
+# Templates / data files
 # =========================
 def build_catalog_template():
     return pd.DataFrame([
@@ -150,14 +130,14 @@ def build_catalog_template():
 def build_template_notes():
     return pd.DataFrame([
         {"Поле": "Артикул, SKU", "Описание": "Артикул продавца. По нему система пытается найти товар в Ozon.", "Пример": "SKU-001"},
-        {"Поле": "Название товара", "Описание": "Название товара. Нужен для fallback-определения категории, если Ozon API не вернул категорию.", "Пример": "Беговая дорожка складная домашняя"},
+        {"Поле": "Название товара", "Описание": "Название товара. Используется как резерв для определения категории, если Ozon API не вернул категорию.", "Пример": "Беговая дорожка складная домашняя"},
         {"Поле": "Длина, см", "Описание": "Длина товара в сантиметрах.", "Пример": "50"},
         {"Поле": "Ширина, см", "Описание": "Ширина товара в сантиметрах.", "Пример": "15"},
         {"Поле": "Высота, см", "Описание": "Высота товара в сантиметрах.", "Пример": "25"},
         {"Поле": "Вес, кг", "Описание": "Вес товара в килограммах.", "Пример": "15"},
         {"Поле": "Себестоимость, ₽", "Описание": "Полная себестоимость одной единицы товара.", "Пример": "12000"},
         {"Поле": "Цена без акции, ₽", "Описание": "Обычная цена товара без акции.", "Пример": "18990"},
-        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи в акции. Если не заполнена — считается из цены без акции.", "Пример": "16990"},
+        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи в акции. Если пусто, система рассчитает её из цены без акции.", "Пример": "16990"},
     ])
 
 
@@ -181,12 +161,11 @@ def ensure_data_files():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     if not COMMISSIONS_PATH.exists():
-        default_comm_df = build_default_commissions_df()
         with pd.ExcelWriter(COMMISSIONS_PATH, engine="openpyxl") as writer:
-            default_comm_df.to_excel(writer, index=False, sheet_name="commissions")
+            build_default_commissions_df().to_excel(writer, index=False, sheet_name="commissions")
 
     if not LOGISTICS_CONFIG_PATH.exists():
-        default_config = {
+        save_json(LOGISTICS_CONFIG_PATH, {
             "included_weight_kg": 1.0,
             "included_volume_l": 5.0,
             "fbo_processing_rub": 20.0,
@@ -203,8 +182,7 @@ def ensure_data_files():
             "cancellation_logistics_coef": 0.5,
             "return_processing_rub": 15.0,
             "defect_on_return_rate": 0.05
-        }
-        save_json(LOGISTICS_CONFIG_PATH, default_config)
+        })
 
 
 def load_commissions_df():
@@ -256,7 +234,6 @@ def ozon_post(path: str, payload: dict, timeout=30):
 
 def fetch_ozon_products_by_offer_ids(offer_ids):
     result = {}
-
     offer_ids = [str(x).strip() for x in offer_ids if str(x).strip()]
     if not offer_ids or not has_ozon_credentials():
         return result
@@ -264,12 +241,7 @@ def fetch_ozon_products_by_offer_ids(offer_ids):
     product_map = {}
 
     try:
-        list_payload = {
-            "filter": {
-                "offer_id": offer_ids
-            },
-            "limit": len(offer_ids)
-        }
+        list_payload = {"filter": {"offer_id": offer_ids}, "limit": len(offer_ids)}
         list_resp = ozon_post("/v3/product/list", list_payload)
         items = list_resp.get("result", {}).get("items", []) if isinstance(list_resp, dict) else []
 
@@ -277,18 +249,13 @@ def fetch_ozon_products_by_offer_ids(offer_ids):
             offer_id = str(item.get("offer_id", "")).strip()
             product_id = item.get("product_id")
             if offer_id:
-                product_map[offer_id] = {
-                    "offer_id": offer_id,
-                    "product_id": product_id
-                }
+                product_map[offer_id] = {"offer_id": offer_id, "product_id": product_id}
     except Exception:
         return result
 
     if product_map:
         try:
-            info_payload = {
-                "product_id": [x["product_id"] for x in product_map.values() if x.get("product_id")]
-            }
+            info_payload = {"product_id": [x["product_id"] for x in product_map.values() if x.get("product_id")]}
             info_resp = ozon_post("/v2/product/info/list", info_payload)
             items = info_resp.get("result", {}).get("items", []) if isinstance(info_resp, dict) else []
 
@@ -375,9 +342,7 @@ def get_commission_from_lookup(price_for_commission, category_id, category_name,
         if not matched.empty:
             return clean_num(matched.iloc[0]["Комиссия, %"], 20.0), "По категории"
 
-    matched = commissions_df[
-        commissions_df["Категория Ozon"].str.strip().str.lower() == "прочее"
-    ]
+    matched = commissions_df[commissions_df["Категория Ozon"].str.strip().str.lower() == "прочее"]
     if not matched.empty:
         return clean_num(matched.iloc[0]["Комиссия, %"], 20.0), "Прочее"
 
@@ -429,7 +394,6 @@ def calc_logistics(model, volume_liters, weight_kg, storage_days, params):
 
     overweight = max(0.0, weight_kg - params["included_weight_kg"])
     overvolume = max(0.0, volume_liters - params["included_volume_l"])
-
     delivery = base_delivery + overweight * extra_kg_rate + overvolume * extra_liter_rate
 
     storage = 0.0
@@ -667,7 +631,6 @@ def find_recommended_price(
     recommended_regular = safe_round(high, 2)
     recommended_promo = safe_round(recommended_regular * (1.0 - promo_discount_from_regular_pct), 2)
     recommended_metrics = get_metrics_for_regular(recommended_regular)
-
     return recommended_regular, recommended_promo, recommended_metrics
 
 
@@ -701,32 +664,23 @@ commissions_df = load_commissions_df()
 logistics_params = load_json(LOGISTICS_CONFIG_PATH, {})
 
 st.title("Ozon — Юнит-экономика")
-st.caption("Загрузите Excel с товарами → система сама определит категорию, комиссию и посчитает юнит-экономику")
+st.caption("Загрузите один Excel-шаблон, система сама определит категорию, подберёт комиссию и посчитает юнит-экономику")
 
 
 # =========================
-# Main controls
+# Main UI
 # =========================
 st.markdown("## 1. Загрузите файл")
 
-col_t1, col_t2 = st.columns(2)
-with col_t1:
-    st.download_button(
-        "Скачать шаблон каталога (Excel)",
-        data=to_excel_bytes({"Шаблон каталога": build_catalog_template()}),
-        file_name="ozon_шаблон_каталога.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-with col_t2:
-    st.download_button(
-        "Скачать шаблон с примечаниями (Excel)",
-        data=to_excel_bytes({
-            "Шаблон каталога": build_catalog_template(),
-            "Примечания": build_template_notes()
-        }),
-        file_name="ozon_шаблон_с_примечаниями.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+st.download_button(
+    "Скачать шаблон (Excel)",
+    data=to_excel_bytes({
+        "Товары": build_catalog_template(),
+        "Инструкция": build_template_notes()
+    }),
+    file_name="ozon_шаблон.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+)
 
 uploaded_catalog = st.file_uploader(
     "Загрузите Excel-файл с товарами",
@@ -777,28 +731,21 @@ with col_p11:
 st.markdown("## 3. Расчёт")
 calculate = st.button("🚀 Рассчитать", type="primary", use_container_width=True)
 
-
-# =========================
-# Admin section
-# =========================
 with st.expander("Настройки администратора"):
     st.markdown("### Справочник комиссий")
-    st.write("Основной справочник лежит в файле `data/ozon_commissions.xlsx`")
+    st.write("Файл: `data/ozon_commissions.xlsx`")
     st.dataframe(commissions_df, use_container_width=True)
 
     st.markdown("### Логистический конфиг")
     st.json(logistics_params)
 
-    st.markdown("### Проверка ключей Ozon")
+    st.markdown("### Ключи Ozon")
     if has_ozon_credentials():
-        st.success("Ozon Client ID и API key найдены в secrets.")
+        st.success("Ключи Ozon найдены в secrets.")
     else:
-        st.warning("Ключи Ozon не найдены в secrets. Категории будут определяться только fallback-логикой.")
+        st.warning("Ключи Ozon не найдены в secrets. Будет использоваться только резервное определение категории.")
 
 
-# =========================
-# Upload processing
-# =========================
 catalog_df = pd.DataFrame()
 
 if uploaded_catalog is not None:
@@ -806,7 +753,7 @@ if uploaded_catalog is not None:
         catalog_df = pd.read_excel(uploaded_catalog)
         catalog_df.columns = [str(c).strip() for c in catalog_df.columns]
         st.success(f"Файл загружен. Строк: {len(catalog_df)}")
-        with st.expander("Предпросмотр загруженного файла"):
+        with st.expander("Предпросмотр файла"):
             st.dataframe(catalog_df.head(20), use_container_width=True)
     except Exception as e:
         st.error(f"Не удалось прочитать Excel: {e}")
@@ -819,19 +766,18 @@ if calculate:
     if uploaded_catalog is None or catalog_df.empty:
         st.error("Сначала загрузите Excel-файл с товарами.")
     else:
-        # Save uploaded products to DB
-        inserted = 0
         conn.execute("DELETE FROM products")
         conn.commit()
 
+        inserted = 0
         for _, row in catalog_df.iterrows():
             sku = str(row.get("Артикул, SKU", row.get("SKU", row.get("Артикул", "")))).strip()
             name = str(row.get("Название товара", row.get("Название", row.get("Наименование", "")))).strip()
 
-            length_cm = normalize_dimension(row.get("Длина, см", row.get("Длина", 0)), "см")
-            width_cm = normalize_dimension(row.get("Ширина, см", row.get("Ширина", 0)), "см")
-            height_cm = normalize_dimension(row.get("Высота, см", row.get("Высота", 0)), "см")
-            weight_kg = normalize_weight(row.get("Вес, кг", row.get("Вес", 0)), "кг")
+            length_cm = clean_num(row.get("Длина, см", row.get("Длина", 0)), 0.0)
+            width_cm = clean_num(row.get("Ширина, см", row.get("Ширина", 0)), 0.0)
+            height_cm = clean_num(row.get("Высота, см", row.get("Высота", 0)), 0.0)
+            weight_kg = clean_num(row.get("Вес, кг", row.get("Вес", 0)), 0.0)
 
             cost = clean_num(row.get("Себестоимость, ₽", row.get("Себестоимость", 0)), 0.0)
             price_regular = clean_num(row.get("Цена без акции, ₽", row.get("Цена без акции", row.get("Цена", 0))), 0.0)
@@ -848,7 +794,6 @@ if calculate:
             inserted += 1
 
         conn.commit()
-
         all_products = pd.read_sql("SELECT * FROM products ORDER BY id DESC", conn)
 
         buyout_rate = buyout / 100.0
@@ -859,9 +804,7 @@ if calculate:
         acquiring_rate = acquiring / 100.0
         spp_discount_pct = spp_discount / 100.0
 
-        # infer promo discount from file if possible, else default 10%
         promo_discount_from_regular = 0.10
-
         tmp_discounts = []
         for _, p in all_products.iterrows():
             pr = clean_num(p.get("price_regular", 0), 0.0)
@@ -875,6 +818,7 @@ if calculate:
             skus = all_products["sku"].astype(str).tolist()
             ozon_map = {}
             api_error = None
+
             try:
                 ozon_map = fetch_ozon_products_by_offer_ids(skus)
             except Exception as e:
@@ -964,12 +908,8 @@ if calculate:
                     promo_discount_from_regular_pct=promo_discount_from_regular,
                 )
 
-                status = classify_sku_status(
-                    current_metrics["margin_pct"],
-                    current_metrics["profit_after_tax_rub"]
-                )
+                status = classify_sku_status(current_metrics["margin_pct"], current_metrics["profit_after_tax_rub"])
 
-                # short result
                 results.append({
                     "Артикул, SKU": sku,
                     "Название товара": name,
@@ -992,7 +932,6 @@ if calculate:
                     "Наценка к себестоимости от рекомендованной цены, %": recommended_metrics["markup_to_cost_pct"],
                     "Статус SKU": status,
 
-                    # detailed fields for export
                     "Ozon product_id": ozon_info.get("product_id"),
                     "Ozon sku": ozon_info.get("sku_ozon"),
                     "category_id": api_category_id,
@@ -1033,7 +972,6 @@ if calculate:
         res_df = pd.DataFrame(results)
 
         st.markdown("## 4. KPI")
-
         total_sku = len(res_df)
         bad_sku = int((res_df["Статус SKU"] == "Критично").sum())
         risk_sku = int((res_df["Статус SKU"] == "Риск").sum())
@@ -1050,7 +988,6 @@ if calculate:
         st.metric("Средняя прибыль текущая, ₽", avg_current_profit)
 
         st.markdown("## 5. Результат")
-
         visible_cols = [
             "Артикул, SKU",
             "Название товара",
@@ -1114,11 +1051,8 @@ if calculate:
             st.dataframe(res_df[detail_cols], use_container_width=True)
 
         st.markdown("## 6. Выгрузка")
-
         result_short = shown_df.copy()
-
         result_full = res_df.copy()
-
         result_meta = pd.DataFrame([
             {"Параметр": "Модель работы", "Значение": model},
             {"Параметр": "Налогообложение", "Значение": tax_regime},
@@ -1136,10 +1070,7 @@ if calculate:
 
         st.download_button(
             "Скачать краткий результат (Excel)",
-            data=to_excel_bytes({
-                "Результат": result_short,
-                "Параметры": result_meta
-            }),
+            data=to_excel_bytes({"Результат": result_short, "Параметры": result_meta}),
             file_name="ozon_краткий_результат.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
@@ -1150,7 +1081,7 @@ if calculate:
                 "Результат полный": result_full,
                 "Параметры": result_meta,
                 "Справочник комиссий": commissions_df,
-                "Примечания к шаблону": build_template_notes()
+                "Инструкция": build_template_notes()
             }),
             file_name="ozon_полный_результат.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
