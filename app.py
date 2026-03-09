@@ -115,14 +115,14 @@ def build_catalog_template():
         },
         {
             "Артикул, SKU": "SKU-002",
-            "Название товара": "Велосипед горный взрослый 27.5",
-            "Длина, см": 140,
-            "Ширина, см": 25,
+            "Название товара": "Электровелосипед городской взрослый складной",
+            "Длина, см": 155,
+            "Ширина, см": 28,
             "Высота, см": 80,
-            "Вес, кг": 15.5,
-            "Себестоимость, ₽": 18500,
-            "Цена без акции, ₽": 32990,
-            "Цена акции, ₽": 28990,
+            "Вес, кг": 32,
+            "Себестоимость, ₽": 30167,
+            "Цена без акции, ₽": 90501,
+            "Цена акции, ₽": 68000,
         }
     ])
 
@@ -137,13 +137,15 @@ def build_template_notes():
         {"Поле": "Вес, кг", "Описание": "Вес товара в килограммах.", "Пример": "2.2"},
         {"Поле": "Себестоимость, ₽", "Описание": "Полная себестоимость одной единицы товара.", "Пример": "2800"},
         {"Поле": "Цена без акции, ₽", "Описание": "Обычная цена товара без акции.", "Пример": "4990"},
-        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи в акции. Если пусто, система рассчитает её из цены без акции.", "Пример": "4290"},
+        {"Поле": "Цена акции, ₽", "Описание": "Фактическая цена продажи. Если пусто, система рассчитает её из цены без акции.", "Пример": "4290"},
     ])
 
 
 def build_default_commissions_df():
     return pd.DataFrame([
+        {"category_id": 0, "Категория Ozon": "Электровелосипеды", "Комиссия, %": 35},
         {"category_id": 0, "Категория Ozon": "Электроинструменты", "Комиссия, %": 15},
+        {"category_id": 0, "Категория Ozon": "Велосипеды", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Спорт и отдых", "Комиссия, %": 15},
         {"category_id": 0, "Категория Ozon": "Смартфоны", "Комиссия, %": 10},
         {"category_id": 0, "Категория Ozon": "Электроника", "Комиссия, %": 15},
@@ -180,7 +182,6 @@ def ensure_data_files():
             "storage_grace_days": 14,
             "storage_rub_per_liter_day": 0.25,
             "return_logistics_coef": 1.0,
-            "cancellation_logistics_coef": 0.5,
             "return_processing_rub": 15.0,
             "defect_on_return_rate": 0.05
         })
@@ -290,16 +291,21 @@ def fetch_ozon_products_by_offer_ids(offer_ids):
 
 
 # =========================
-# Category fallback
+# Category normalization / fallback
 # =========================
 CATEGORY_KEYWORDS = {
+    "Электровелосипеды": [
+        "электровелосипед", "e-bike", "ebike", "электро велосипед"
+    ],
     "Электроинструменты": [
         "дрель", "перфоратор", "шуруповерт", "шуруповёрт", "болгарка", "лобзик",
-        "шлифмашина", "гайковерт", "гайковёрт", "электроинструмент", "отвертка", "отвёртка"
+        "шлифмашина", "гайковерт", "гайковёрт", "электроинструмент"
+    ],
+    "Велосипеды": [
+        "горный велосипед", "велосипед", "bmx", "двухколесный велосипед", "двухколёсный велосипед"
     ],
     "Спорт и отдых": [
-        "велосипед", "горный велосипед", "bmx", "самокат", "тренажер", "тренажёр",
-        "беговая дорожка", "эллипс", "гантел", "коврик", "фитнес", "рюкзак"
+        "самокат", "тренажер", "тренажёр", "беговая дорожка", "эллипс", "гантел", "коврик", "фитнес", "рюкзак"
     ],
     "Смартфоны": ["смартфон", "iphone", "xiaomi", "redmi", "realme", "galaxy"],
     "Электроника": ["наушник", "гарнитур", "колонка", "power bank", "пауэрбанк", "кабель", "зарядк", "bluetooth"],
@@ -311,6 +317,24 @@ CATEGORY_KEYWORDS = {
     "Автотовары": ["авто", "машин", "держатель", "щетка", "чехол на руль"],
     "Канцтовары": ["тетрад", "ручка", "карандаш", "маркер", "ежедневник"],
 }
+
+
+def normalize_category_name(raw_name: str):
+    text = str(raw_name).strip().lower()
+
+    if not text:
+        return ""
+
+    if "электровелосип" in text:
+        return "Электровелосипеды"
+    if "велосип" in text:
+        return "Велосипеды"
+    if any(x in text for x in ["дрель", "шурупов", "перфоратор", "болгарка", "лобзик", "гайков"]):
+        return "Электроинструменты"
+    if any(x in text for x in ["беговая дорожка", "тренаж", "самокат", "фитнес"]):
+        return "Спорт и отдых"
+
+    return raw_name.strip()
 
 
 def get_keyword_category(name: str):
@@ -334,27 +358,31 @@ def fallback_category(name, commissions_df):
 # =========================
 def get_commission_from_lookup(price_for_commission, category_id, category_name, commissions_df):
     if price_for_commission <= 100:
-        return 14.0, "Правило <=100 ₽"
+        return 14.0
     if price_for_commission <= 300:
-        return 20.0, "Правило 101–300 ₽"
+        return 20.0
+
+    normalized_name = normalize_category_name(category_name)
 
     if category_id not in (None, "", 0):
         matched = commissions_df[commissions_df["category_id"].astype(str) == str(category_id)]
         if not matched.empty:
-            return clean_num(matched.iloc[0]["Комиссия, %"], 20.0), "По category_id"
+            return clean_num(matched.iloc[0]["Комиссия, %"], 20.0)
 
-    if str(category_name).strip():
+    if str(normalized_name).strip():
         matched = commissions_df[
-            commissions_df["Категория Ozon"].str.strip().str.lower() == str(category_name).strip().lower()
+            commissions_df["Категория Ozon"].str.strip().str.lower() == str(normalized_name).strip().lower()
         ]
         if not matched.empty:
-            return clean_num(matched.iloc[0]["Комиссия, %"], 20.0), "По категории"
+            return clean_num(matched.iloc[0]["Комиссия, %"], 20.0)
 
-    matched = commissions_df[commissions_df["Категория Ozon"].str.strip().str.lower() == "прочее"]
+    matched = commissions_df[
+        commissions_df["Категория Ozon"].str.strip().str.lower() == "прочее"
+    ]
     if not matched.empty:
-        return clean_num(matched.iloc[0]["Комиссия, %"], 20.0), "Прочее"
+        return clean_num(matched.iloc[0]["Комиссия, %"], 20.0)
 
-    return 20.0, "Fallback 20%"
+    return 20.0
 
 
 # =========================
@@ -418,40 +446,31 @@ def calc_logistics(model, volume_liters, weight_kg, storage_days, params):
     )
 
 
-def calc_returns_and_cancellations(
+def calc_returns_cost(
     direct_logistics_rub: float,
     cost: float,
     buyout_rate: float,
-    cancellation_rate: float,
     return_logistics_coef: float,
-    cancellation_logistics_coef: float,
     return_processing_rub: float,
     defect_on_return_rate: float,
 ):
-    cancellation_share = max(0.0, min(1.0, cancellation_rate))
-    post_cancel_share = max(0.0, 1.0 - cancellation_share)
+    buyout_share = max(0.0, min(1.0, buyout_rate))
+    non_buyout_share = max(0.0, 1.0 - buyout_share)
 
-    effective_sale_share = post_cancel_share * max(0.0, min(1.0, buyout_rate))
-    non_buyout_after_dispatch_share = max(0.0, post_cancel_share - effective_sale_share)
-
-    return_logistics_rub = direct_logistics_rub * non_buyout_after_dispatch_share * return_logistics_coef
-    cancellation_logistics_rub = direct_logistics_rub * cancellation_share * cancellation_logistics_coef
-    return_processing_total_rub = (non_buyout_after_dispatch_share + cancellation_share) * return_processing_rub
-    damage_reserve_on_returns_rub = cost * (non_buyout_after_dispatch_share + cancellation_share) * defect_on_return_rate
+    return_logistics_rub = direct_logistics_rub * non_buyout_share * return_logistics_coef
+    return_processing_total_rub = non_buyout_share * return_processing_rub
+    damage_reserve_on_returns_rub = cost * non_buyout_share * defect_on_return_rate
 
     total_reverse_cost = (
         return_logistics_rub
-        + cancellation_logistics_rub
         + return_processing_total_rub
         + damage_reserve_on_returns_rub
     )
 
     return {
-        "cancellation_share_pct": safe_round(cancellation_share * 100, 2),
-        "effective_buyout_share_pct": safe_round(effective_sale_share * 100, 2),
-        "non_buyout_after_dispatch_share_pct": safe_round(non_buyout_after_dispatch_share * 100, 2),
+        "effective_buyout_share_pct": safe_round(buyout_share * 100, 2),
+        "non_buyout_share_pct": safe_round(non_buyout_share * 100, 2),
         "return_logistics_rub": safe_round(return_logistics_rub, 2),
-        "cancellation_logistics_rub": safe_round(cancellation_logistics_rub, 2),
         "return_processing_rub": safe_round(return_processing_total_rub, 2),
         "damage_reserve_on_returns_rub": safe_round(damage_reserve_on_returns_rub, 2),
         "total_reverse_cost_rub": safe_round(total_reverse_cost, 2),
@@ -473,12 +492,9 @@ def calc_price_metrics(
     storage_days: int,
     tax_regime: str,
     adv_rate: float,
-    boost_rate: float,
     acquiring_rate: float,
     defect_base_rate: float,
     buyout_rate: float,
-    cancellation_rate: float,
-    other_fixed_rub: float,
     logistics_params: dict,
 ):
     if promo_price <= 0:
@@ -498,20 +514,17 @@ def calc_price_metrics(
         params=logistics_params
     )
 
-    reverse = calc_returns_and_cancellations(
+    reverse = calc_returns_cost(
         direct_logistics_rub=direct_logistics_rub,
         cost=cost,
         buyout_rate=buyout_rate,
-        cancellation_rate=cancellation_rate,
         return_logistics_coef=logistics_params["return_logistics_coef"],
-        cancellation_logistics_coef=logistics_params["cancellation_logistics_coef"],
         return_processing_rub=logistics_params["return_processing_rub"],
         defect_on_return_rate=logistics_params["defect_on_return_rate"],
     )
 
     commission_rub = seller_revenue_price * (commission_percent / 100.0)
     advertising_rub = seller_revenue_price * adv_rate
-    boost_rub = seller_revenue_price * boost_rate
     acquiring_rub = seller_revenue_price * acquiring_rate
     base_defect_reserve_rub = cost * defect_base_rate
     marketplace_discount_rub = customer_price - seller_revenue_price
@@ -523,10 +536,8 @@ def calc_price_metrics(
         + storage_rub
         + reverse["total_reverse_cost_rub"]
         + advertising_rub
-        + boost_rub
         + acquiring_rub
         + base_defect_reserve_rub
-        + other_fixed_rub
     )
 
     tax_rub, profit_before_tax_rub, profit_after_tax_rub, profit_pct_of_revenue = calc_tax(
@@ -551,18 +562,14 @@ def calc_price_metrics(
         "direct_logistics_rub": safe_round(direct_logistics_rub, 2),
         "storage_rub": safe_round(storage_rub, 2),
         "advertising_rub": safe_round(advertising_rub, 2),
-        "boost_rub": safe_round(boost_rub, 2),
         "acquiring_rub": safe_round(acquiring_rub, 2),
         "base_defect_reserve_rub": safe_round(base_defect_reserve_rub, 2),
         "returns_total_rub": safe_round(reverse["total_reverse_cost_rub"], 2),
         "return_logistics_rub": safe_round(reverse["return_logistics_rub"], 2),
-        "cancellation_logistics_rub": safe_round(reverse["cancellation_logistics_rub"], 2),
         "return_processing_rub": safe_round(reverse["return_processing_rub"], 2),
         "damage_reserve_on_returns_rub": safe_round(reverse["damage_reserve_on_returns_rub"], 2),
-        "cancellation_share_pct": reverse["cancellation_share_pct"],
         "effective_buyout_share_pct": reverse["effective_buyout_share_pct"],
-        "non_buyout_after_dispatch_share_pct": reverse["non_buyout_after_dispatch_share_pct"],
-        "other_fixed_rub": safe_round(other_fixed_rub, 2),
+        "non_buyout_share_pct": reverse["non_buyout_share_pct"],
         "full_cost_before_tax": safe_round(full_cost_before_tax, 2),
         "tax_rub": safe_round(tax_rub, 2),
         "profit_before_tax_rub": safe_round(profit_before_tax_rub, 2),
@@ -585,12 +592,9 @@ def find_recommended_price(
     storage_days: int,
     tax_regime: str,
     adv_rate: float,
-    boost_rate: float,
     acquiring_rate: float,
     defect_base_rate: float,
     buyout_rate: float,
-    cancellation_rate: float,
-    other_fixed_rub: float,
     logistics_params: dict,
     promo_discount_from_regular_pct: float,
 ):
@@ -610,12 +614,9 @@ def find_recommended_price(
             storage_days=storage_days,
             tax_regime=tax_regime,
             adv_rate=adv_rate,
-            boost_rate=boost_rate,
             acquiring_rate=acquiring_rate,
             defect_base_rate=defect_base_rate,
             buyout_rate=buyout_rate,
-            cancellation_rate=cancellation_rate,
-            other_fixed_rub=other_fixed_rub,
             logistics_params=logistics_params,
         )
 
@@ -711,24 +712,20 @@ with col_p2:
 with col_p3:
     target_margin = st.slider("Целевая маржинальность, %", 0, 100, 20)
 
-col_p4, col_p5, col_p6, col_p7, col_p8 = st.columns(5)
+col_p4, col_p5, col_p6, col_p7 = st.columns(4)
 with col_p4:
     spp_discount = st.slider("СПП, %", 0, 50, 0)
 with col_p5:
-    ad = st.slider("Реклама, %", 0, 50, 10)
+    ad = st.slider("Реклама, %", 0, 50, 5)
 with col_p6:
-    boost = st.slider("Буст, %", 0, 20, 5)
+    buyout = st.slider("Выкупаемость, %", 10, 100, 90)
 with col_p7:
-    buyout = st.slider("Выкупаемость, %", 10, 100, 85)
-with col_p8:
-    cancellation = st.slider("Отмены, %", 0, 50, 5)
+    acquiring = st.slider("Эквайринг, %", 0.0, 10.0, 1.0, 0.1)
 
-col_p9, col_p10, col_p11 = st.columns(3)
+col_p8, col_p9 = st.columns(2)
+with col_p8:
+    defect = st.slider("Брак / списание, %", 0, 20, 0)
 with col_p9:
-    defect = st.slider("Брак / списание, %", 0, 20, 2)
-with col_p10:
-    acquiring = st.slider("Эквайринг, %", 0.0, 10.0, 1.5, 0.1)
-with col_p11:
     storage_days = st.number_input("Срок хранения, дней", min_value=0, max_value=365, value=45, step=1)
 
 st.markdown("## 3. Расчёт")
@@ -779,10 +776,8 @@ if calculate:
         all_products = pd.read_sql("SELECT * FROM products ORDER BY id DESC", conn)
 
         buyout_rate = buyout / 100.0
-        cancellation_rate = cancellation / 100.0
         defect_base_rate = defect / 100.0
         adv_rate = ad / 100.0
-        boost_rate = boost / 100.0
         acquiring_rate = acquiring / 100.0
         spp_discount_pct = spp_discount / 100.0
 
@@ -831,16 +826,16 @@ if calculate:
 
                 ozon_info = ozon_map.get(sku, {})
                 api_category_id = ozon_info.get("category_id")
-                api_category_name = ozon_info.get("category_name", "")
+                api_category_name = normalize_category_name(ozon_info.get("category_name", ""))
 
                 if api_category_id or str(api_category_name).strip():
-                    resolved_category_name = api_category_name if str(api_category_name).strip() else "По category_id"
+                    resolved_category_name = api_category_name if str(api_category_name).strip() else "Прочее"
                     category_source = "Ozon API"
                 else:
                     resolved_category_name, category_source = fallback_category(name, commissions_df)
                     api_category_name = resolved_category_name
 
-                commission_percent, _ = get_commission_from_lookup(
+                commission_percent = get_commission_from_lookup(
                     price_for_commission=price_promo * (1 - spp_discount_pct),
                     category_id=api_category_id,
                     category_name=api_category_name,
@@ -859,12 +854,9 @@ if calculate:
                     storage_days=storage_days,
                     tax_regime=tax_regime,
                     adv_rate=adv_rate,
-                    boost_rate=boost_rate,
                     acquiring_rate=acquiring_rate,
                     defect_base_rate=defect_base_rate,
                     buyout_rate=buyout_rate,
-                    cancellation_rate=cancellation_rate,
-                    other_fixed_rub=0.0,
                     logistics_params=logistics_params,
                 )
 
@@ -880,12 +872,9 @@ if calculate:
                     storage_days=storage_days,
                     tax_regime=tax_regime,
                     adv_rate=adv_rate,
-                    boost_rate=boost_rate,
                     acquiring_rate=acquiring_rate,
                     defect_base_rate=defect_base_rate,
                     buyout_rate=buyout_rate,
-                    cancellation_rate=cancellation_rate,
-                    other_fixed_rub=0.0,
                     logistics_params=logistics_params,
                     promo_discount_from_regular_pct=promo_discount_from_regular,
                 )
@@ -900,7 +889,7 @@ if calculate:
                     "Комиссия, %": current_metrics["commission_percent"],
                     "Логистика, ₽": current_metrics["direct_logistics_rub"],
                     "Хранение, ₽": current_metrics["storage_rub"],
-                    "Возвраты / отмены, ₽": current_metrics["returns_total_rub"],
+                    "Возвраты, ₽": current_metrics["returns_total_rub"],
                     "Полная себестоимость от текущей цены, ₽": current_metrics["full_cost_before_tax"],
                     "Цена акции, ₽": current_metrics["promo_price_rub"],
                     "Прибыль от текущей цены, ₽": current_metrics["profit_after_tax_rub"],
@@ -915,6 +904,12 @@ if calculate:
                     "Выручка продавца после СПП, ₽": current_metrics["seller_revenue_price_rub"],
                     "Рекомендованная цена без акции, ₽": safe_round(recommended_regular_price, 2),
                     "Наценка к себестоимости от рекомендованной цены, %": recommended_metrics["markup_to_cost_pct"],
+                    "Вес, кг": safe_round(weight_kg, 3),
+                    "Объём, л": safe_round(volume_liters, 3),
+                    "Эквайринг, ₽": current_metrics["acquiring_rub"],
+                    "Реклама, ₽": current_metrics["advertising_rub"],
+                    "Налог от текущей цены, ₽": current_metrics["tax_rub"],
+                    "Выкупаемость, %": current_metrics["effective_buyout_share_pct"],
                 })
 
         res_df = pd.DataFrame(results)
@@ -944,7 +939,7 @@ if calculate:
             "Комиссия, %",
             "Логистика, ₽",
             "Хранение, ₽",
-            "Возвраты / отмены, ₽",
+            "Возвраты, ₽",
             "Полная себестоимость от текущей цены, ₽",
             "Цена акции, ₽",
             "Прибыль от текущей цены, ₽",
@@ -964,9 +959,7 @@ if calculate:
             {"Параметр": "Целевая маржинальность, %", "Значение": target_margin},
             {"Параметр": "СПП, %", "Значение": spp_discount},
             {"Параметр": "Реклама, %", "Значение": ad},
-            {"Параметр": "Буст, %", "Значение": boost},
             {"Параметр": "Выкупаемость, %", "Значение": buyout},
-            {"Параметр": "Отмены, %", "Значение": cancellation},
             {"Параметр": "Брак / списание, %", "Значение": defect},
             {"Параметр": "Эквайринг, %", "Значение": acquiring},
             {"Параметр": "Срок хранения, дней", "Значение": storage_days},
@@ -992,4 +985,4 @@ if calculate:
         )
 
         if api_error:
-            st.warning(f"Ozon API не вернул данные по части товаров. Для них была использована резервная логика по названию: {api_error}")
+            st.warning("Часть товаров не была найдена через Ozon API. Для них была использована резервная логика по названию.")
